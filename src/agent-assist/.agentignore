@@ -1,0 +1,11 @@
+# Excluded from the code-deploy ZIP (.gitignore syntax).
+# skills/ is deliberately NOT listed: the SKILL.md files, references and scripts are the agent's
+# behaviour and must ship with the code.
+.env
+.env.*
+bin/
+obj/
+*.user
+.vs/
+.azure/
+.git/
