@@ -1,0 +1,1481 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "MAPS mock",
+    "description": "Mock MAPS backends for the MAPS conversation agent. Classify the item numbers the user typed first, then run only the actions each item lists in availableActions.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://mdlineapps-f0bgc7e5cyasdths.westus3-01.azurewebsites.net"
+    }
+  ],
+  "paths": {
+    "/v1/items/classify": {
+      "get": {
+        "tags": [
+          "maps"
+        ],
+        "summary": "Classify item numbers the user typed",
+        "description": "Call this first for every item number the user typed, with the ids exactly as typed (comma- or space-separated, 1 to 20; duplicates are merged). For each id it returns the type (Pack, Component, StandardPack, TempComponent or NotFound), found, a statusLabel (\"status 1\", \"being sourced (status 7)\" or \"discontinued (status 4)\") and availableActions: the only actions you may offer or run for that item. When a hyphen base form matched, matchedId is the service number. note explains anything special; relay it. pairActions is [\"Pack compare\"] when two or more different comparable packs were classified, otherwise empty. Never invent item numbers.",
+        "operationId": "classifyItems",
+        "parameters": [
+          {
+            "name": "ids",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Item numbers exactly as the user typed them, comma- or space-separated.",
+              "title": "Ids",
+              "example": "DYNJ40380J,DYNJ86645A-QPC"
+            },
+            "description": "Item numbers exactly as the user typed them, comma- or space-separated."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One entry per distinct id, in the order typed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassifyResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid x-api-key (api_key mode).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "An id is not an item number, or a required parameter is missing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/items/{itemId}/subpack": {
+      "get": {
+        "tags": [
+          "maps"
+        ],
+        "summary": "Get the subpacks of a pack",
+        "description": "Call only when classifyItems listed Subpack in this item's availableActions. Returns subpacks: subpackId, description and quantity. status ok returns the data. not_available means the item does not allow this action: relay reason and offer only availableActions. not_found means there is no such item: ask the user to check the number and never suggest similar numbers. itemId is the matched item number; typedId is present when the user typed a longer hyphen form.",
+        "operationId": "getSubpack",
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "One item number exactly as the user typed it, for example DYNJ40380J.",
+              "title": "Itemid",
+              "example": "DYNJ40380J"
+            },
+            "description": "One item number exactly as the user typed it, for example DYNJ40380J."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubpackResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid x-api-key (api_key mode).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "An id is not an item number, or a required parameter is missing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/items/{itemId}/inventory": {
+      "get": {
+        "tags": [
+          "maps"
+        ],
+        "summary": "Get the inventory of a pack",
+        "description": "Call only when classifyItems listed Inventory in this item's availableActions. Returns warehouse, onHand, allocated, available and asOf (the stock date). Packs being sourced (status 7) do not allow it. status ok returns the data. not_available means the item does not allow this action: relay reason and offer only availableActions. not_found means there is no such item: ask the user to check the number and never suggest similar numbers. itemId is the matched item number; typedId is present when the user typed a longer hyphen form.",
+        "operationId": "getInventory",
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "One item number exactly as the user typed it, for example DYNJ40380J.",
+              "title": "Itemid",
+              "example": "DYNJ40380J"
+            },
+            "description": "One item number exactly as the user typed it, for example DYNJ40380J."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid x-api-key (api_key mode).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "An id is not an item number, or a required parameter is missing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/items/{itemId}/eta": {
+      "get": {
+        "tags": [
+          "maps"
+        ],
+        "summary": "Get the next ship date of a pack",
+        "description": "Call only when classifyItems listed ETA in this item's availableActions. Returns nextShipDate, quantity and source. Packs being sourced (status 7) do not allow it. status ok returns the data. not_available means the item does not allow this action: relay reason and offer only availableActions. not_found means there is no such item: ask the user to check the number and never suggest similar numbers. itemId is the matched item number; typedId is present when the user typed a longer hyphen form.",
+        "operationId": "getEta",
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "One item number exactly as the user typed it, for example DYNJ40380J.",
+              "title": "Itemid",
+              "example": "DYNJ40380J"
+            },
+            "description": "One item number exactly as the user typed it, for example DYNJ40380J."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EtaResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid x-api-key (api_key mode).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "An id is not an item number, or a required parameter is missing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/items/{itemId}/approvers": {
+      "get": {
+        "tags": [
+          "maps"
+        ],
+        "summary": "Get the approvers of a pack",
+        "description": "Call only when classifyItems listed Approvers in this item's availableActions. Returns approvers: name, role and email. status ok returns the data. not_available means the item does not allow this action: relay reason and offer only availableActions. not_found means there is no such item: ask the user to check the number and never suggest similar numbers. itemId is the matched item number; typedId is present when the user typed a longer hyphen form.",
+        "operationId": "getApprovers",
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "One item number exactly as the user typed it, for example DYNJ40380J.",
+              "title": "Itemid",
+              "example": "DYNJ40380J"
+            },
+            "description": "One item number exactly as the user typed it, for example DYNJ40380J."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApproversResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid x-api-key (api_key mode).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "An id is not an item number, or a required parameter is missing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/items/{itemId}/bom": {
+      "get": {
+        "tags": [
+          "maps"
+        ],
+        "summary": "Get the bill of materials of a pack",
+        "description": "Call only when classifyItems listed BOM in this item's availableActions. Returns components: componentId, description and quantity. status ok returns the data. not_available means the item does not allow this action: relay reason and offer only availableActions. not_found means there is no such item: ask the user to check the number and never suggest similar numbers. itemId is the matched item number; typedId is present when the user typed a longer hyphen form.",
+        "operationId": "getBom",
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "One item number exactly as the user typed it, for example DYNJ40380J.",
+              "title": "Itemid",
+              "example": "DYNJ40380J"
+            },
+            "description": "One item number exactly as the user typed it, for example DYNJ40380J."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BomResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid x-api-key (api_key mode).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "An id is not an item number, or a required parameter is missing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/items/{itemId}/choice-items": {
+      "get": {
+        "tags": [
+          "maps"
+        ],
+        "summary": "Get the choice items of a component",
+        "description": "Call only when classifyItems listed Choice items in this item's availableActions. Returns choices: itemId and description of each alternative. status ok returns the data. not_available means the item does not allow this action: relay reason and offer only availableActions. not_found means there is no such item: ask the user to check the number and never suggest similar numbers. itemId is the matched item number; typedId is present when the user typed a longer hyphen form.",
+        "operationId": "getChoiceItems",
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "One item number exactly as the user typed it, for example DYNJ40380J.",
+              "title": "Itemid",
+              "example": "DYNJ40380J"
+            },
+            "description": "One item number exactly as the user typed it, for example DYNJ40380J."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChoiceItemsResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid x-api-key (api_key mode).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "An id is not an item number, or a required parameter is missing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/items/{itemId}/shelf-item": {
+      "get": {
+        "tags": [
+          "maps"
+        ],
+        "summary": "Get the shelf item of a component",
+        "description": "Call only when classifyItems listed Shelf item in this item's availableActions. Returns shelfItemId, description and unitOfMeasure of the shelf item. status ok returns the data. not_available means the item does not allow this action: relay reason and offer only availableActions. not_found means there is no such item: ask the user to check the number and never suggest similar numbers. itemId is the matched item number; typedId is present when the user typed a longer hyphen form.",
+        "operationId": "getShelfItem",
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "One item number exactly as the user typed it, for example DYNJ40380J.",
+              "title": "Itemid",
+              "example": "DYNJ40380J"
+            },
+            "description": "One item number exactly as the user typed it, for example DYNJ40380J."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShelfItemResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid x-api-key (api_key mode).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "An id is not an item number, or a required parameter is missing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/items/{itemId}/component-details": {
+      "get": {
+        "tags": [
+          "maps"
+        ],
+        "summary": "Get the details of a component",
+        "description": "Call only when classifyItems listed Component details in this item's availableActions. Returns description, division, unitOfMeasure, manufacturer, sterile and latexFree. status ok returns the data. not_available means the item does not allow this action: relay reason and offer only availableActions. not_found means there is no such item: ask the user to check the number and never suggest similar numbers. itemId is the matched item number; typedId is present when the user typed a longer hyphen form.",
+        "operationId": "getComponentDetails",
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "One item number exactly as the user typed it, for example DYNJ40380J.",
+              "title": "Itemid",
+              "example": "DYNJ40380J"
+            },
+            "description": "One item number exactly as the user typed it, for example DYNJ40380J."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComponentDetailsResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid x-api-key (api_key mode).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "An id is not an item number, or a required parameter is missing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/packs/compare": {
+      "get": {
+        "tags": [
+          "maps"
+        ],
+        "summary": "Compare the bills of materials of two packs",
+        "description": "Call only when classifyItems returned pairActions with \"Pack compare\" for these two packs. Returns onlyInFirst, onlyInSecond and quantityDifferences between the two bills of materials. status ok returns the differences. not_comparable means they are not two different comparable packs (a discontinued pack, a component or other non-pack, or the same pack twice): relay reason. not_found means an item does not exist: ask the user to check the number. Packs being sourced (status 7) are comparable.",
+        "operationId": "comparePacks",
+        "parameters": [
+          {
+            "name": "first",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "First pack number exactly as typed.",
+              "title": "First",
+              "example": "DYNJ40380J"
+            },
+            "description": "First pack number exactly as typed."
+          },
+          {
+            "name": "second",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Second pack number exactly as typed.",
+              "title": "Second",
+              "example": "DYNJ40381A"
+            },
+            "description": "Second pack number exactly as typed."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparePacksResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid x-api-key (api_key mode).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "An id is not an item number, or a required parameter is missing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ActionStatus": {
+        "type": "string",
+        "enum": [
+          "ok",
+          "not_available",
+          "not_found",
+          "not_comparable"
+        ],
+        "title": "ActionStatus",
+        "description": "Outcome of an action call. Refusals are in-band (HTTP 200)."
+      },
+      "Approver": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "role",
+          "email"
+        ],
+        "title": "Approver",
+        "description": "One approver of a pack."
+      },
+      "ApproversResult": {
+        "properties": {
+          "status": {
+            "description": "ok: data follows. not_available: the item does not allow this action. not_found: no such item. Relay reason when not ok.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ActionStatus"
+              }
+            ]
+          },
+          "action": {
+            "$ref": "#/components/schemas/CatalogAction"
+          },
+          "itemId": {
+            "type": "string",
+            "title": "Itemid",
+            "description": "The matched service item number when found, else the id as typed."
+          },
+          "typedId": {
+            "type": "string",
+            "title": "Typedid",
+            "description": "The id as typed, only when it differs from itemId.",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "description": "Why the status is not ok.",
+            "nullable": true
+          },
+          "availableActions": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogAction"
+            },
+            "type": "array",
+            "title": "Availableactions",
+            "description": "The item's available actions, on not_available.",
+            "nullable": true
+          },
+          "approvers": {
+            "items": {
+              "$ref": "#/components/schemas/Approver"
+            },
+            "type": "array",
+            "title": "Approvers",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "action",
+          "itemId"
+        ],
+        "title": "ApproversResult",
+        "description": "getApprovers result."
+      },
+      "BomComponent": {
+        "properties": {
+          "componentId": {
+            "type": "string",
+            "title": "Componentid"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "quantity": {
+            "type": "integer",
+            "title": "Quantity"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "componentId",
+          "description",
+          "quantity"
+        ],
+        "title": "BomComponent",
+        "description": "One bill-of-materials line."
+      },
+      "BomResult": {
+        "properties": {
+          "status": {
+            "description": "ok: data follows. not_available: the item does not allow this action. not_found: no such item. Relay reason when not ok.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ActionStatus"
+              }
+            ]
+          },
+          "action": {
+            "$ref": "#/components/schemas/CatalogAction"
+          },
+          "itemId": {
+            "type": "string",
+            "title": "Itemid",
+            "description": "The matched service item number when found, else the id as typed."
+          },
+          "typedId": {
+            "type": "string",
+            "title": "Typedid",
+            "description": "The id as typed, only when it differs from itemId.",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "description": "Why the status is not ok.",
+            "nullable": true
+          },
+          "availableActions": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogAction"
+            },
+            "type": "array",
+            "title": "Availableactions",
+            "description": "The item's available actions, on not_available.",
+            "nullable": true
+          },
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/BomComponent"
+            },
+            "type": "array",
+            "title": "Components",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "action",
+          "itemId"
+        ],
+        "title": "BomResult",
+        "description": "getBom result."
+      },
+      "CatalogAction": {
+        "type": "string",
+        "enum": [
+          "Subpack",
+          "Inventory",
+          "ETA",
+          "Approvers",
+          "BOM",
+          "Pack compare",
+          "Choice items",
+          "Shelf item",
+          "Component details"
+        ],
+        "title": "CatalogAction",
+        "description": "A catalog action in display form."
+      },
+      "Choice": {
+        "properties": {
+          "itemId": {
+            "type": "string",
+            "title": "Itemid"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "itemId",
+          "description"
+        ],
+        "title": "Choice",
+        "description": "One choice item that can stand in for a component."
+      },
+      "ChoiceItemsResult": {
+        "properties": {
+          "status": {
+            "description": "ok: data follows. not_available: the item does not allow this action. not_found: no such item. Relay reason when not ok.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ActionStatus"
+              }
+            ]
+          },
+          "action": {
+            "$ref": "#/components/schemas/CatalogAction"
+          },
+          "itemId": {
+            "type": "string",
+            "title": "Itemid",
+            "description": "The matched service item number when found, else the id as typed."
+          },
+          "typedId": {
+            "type": "string",
+            "title": "Typedid",
+            "description": "The id as typed, only when it differs from itemId.",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "description": "Why the status is not ok.",
+            "nullable": true
+          },
+          "availableActions": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogAction"
+            },
+            "type": "array",
+            "title": "Availableactions",
+            "description": "The item's available actions, on not_available.",
+            "nullable": true
+          },
+          "choices": {
+            "items": {
+              "$ref": "#/components/schemas/Choice"
+            },
+            "type": "array",
+            "title": "Choices",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "action",
+          "itemId"
+        ],
+        "title": "ChoiceItemsResult",
+        "description": "getChoiceItems result."
+      },
+      "ClassifiedItem": {
+        "properties": {
+          "ordinal": {
+            "type": "integer",
+            "title": "Ordinal",
+            "description": "1-based position in the de-duplicated request."
+          },
+          "itemId": {
+            "type": "string",
+            "title": "Itemid",
+            "description": "The identifier as typed, trimmed and upper-cased."
+          },
+          "matchedId": {
+            "type": "string",
+            "title": "Matchedid",
+            "description": "The service item number that matched; differs from itemId when a hyphen base form matched.",
+            "nullable": true
+          },
+          "type": {
+            "description": "Pack, Component, StandardPack, TempComponent or NotFound.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ItemType"
+              }
+            ]
+          },
+          "found": {
+            "type": "boolean",
+            "title": "Found"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "nullable": true
+          },
+          "customer": {
+            "type": "string",
+            "title": "Customer",
+            "nullable": true
+          },
+          "division": {
+            "type": "integer",
+            "title": "Division",
+            "nullable": true
+          },
+          "statusLabel": {
+            "type": "string",
+            "title": "Statuslabel",
+            "description": "Item status: \"status 1\", \"being sourced (status 7)\" or \"discontinued (status 4)\".",
+            "nullable": true
+          },
+          "availableActions": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogAction"
+            },
+            "type": "array",
+            "title": "Availableactions",
+            "description": "The only actions that may be offered or run for this item."
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "description": "What is special about this item; relay it to the user.",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "ordinal",
+          "itemId",
+          "type",
+          "found",
+          "availableActions"
+        ],
+        "title": "ClassifiedItem",
+        "description": "What one typed identifier is and which actions it has."
+      },
+      "ClassifyResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ClassifiedItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "pairActions": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogAction"
+            },
+            "type": "array",
+            "title": "Pairactions",
+            "description": "[\"Pack compare\"] when the request holds two or more distinct comparable packs; otherwise empty."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "pairActions"
+        ],
+        "title": "ClassifyResponse",
+        "description": "classifyItems result."
+      },
+      "ComparePacksResult": {
+        "properties": {
+          "status": {
+            "description": "ok: differences follow. not_comparable: not two different comparable packs. not_found: an item does not exist. Relay reason when not ok.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ActionStatus"
+              }
+            ]
+          },
+          "action": {
+            "$ref": "#/components/schemas/CatalogAction"
+          },
+          "first": {
+            "type": "string",
+            "title": "First",
+            "description": "First pack: matched item number when found, else as typed."
+          },
+          "second": {
+            "type": "string",
+            "title": "Second",
+            "description": "Second pack: matched item number when found, else as typed."
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "nullable": true
+          },
+          "onlyInFirst": {
+            "items": {
+              "$ref": "#/components/schemas/BomComponent"
+            },
+            "type": "array",
+            "title": "Onlyinfirst",
+            "nullable": true
+          },
+          "onlyInSecond": {
+            "items": {
+              "$ref": "#/components/schemas/BomComponent"
+            },
+            "type": "array",
+            "title": "Onlyinsecond",
+            "nullable": true
+          },
+          "quantityDifferences": {
+            "items": {
+              "$ref": "#/components/schemas/QuantityDifference"
+            },
+            "type": "array",
+            "title": "Quantitydifferences",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "action",
+          "first",
+          "second"
+        ],
+        "title": "ComparePacksResult",
+        "description": "comparePacks result, computed from the two BOMs."
+      },
+      "ComponentDetailsResult": {
+        "properties": {
+          "status": {
+            "description": "ok: data follows. not_available: the item does not allow this action. not_found: no such item. Relay reason when not ok.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ActionStatus"
+              }
+            ]
+          },
+          "action": {
+            "$ref": "#/components/schemas/CatalogAction"
+          },
+          "itemId": {
+            "type": "string",
+            "title": "Itemid",
+            "description": "The matched service item number when found, else the id as typed."
+          },
+          "typedId": {
+            "type": "string",
+            "title": "Typedid",
+            "description": "The id as typed, only when it differs from itemId.",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "description": "Why the status is not ok.",
+            "nullable": true
+          },
+          "availableActions": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogAction"
+            },
+            "type": "array",
+            "title": "Availableactions",
+            "description": "The item's available actions, on not_available.",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "nullable": true
+          },
+          "division": {
+            "type": "integer",
+            "title": "Division",
+            "nullable": true
+          },
+          "unitOfMeasure": {
+            "type": "string",
+            "title": "Unitofmeasure",
+            "nullable": true
+          },
+          "manufacturer": {
+            "type": "string",
+            "title": "Manufacturer",
+            "nullable": true
+          },
+          "sterile": {
+            "type": "boolean",
+            "title": "Sterile",
+            "nullable": true
+          },
+          "latexFree": {
+            "type": "boolean",
+            "title": "Latexfree",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "action",
+          "itemId"
+        ],
+        "title": "ComponentDetailsResult",
+        "description": "getComponentDetails result."
+      },
+      "ErrorBody": {
+        "properties": {
+          "error": {
+            "type": "string",
+            "title": "Error",
+            "description": "Machine-readable error code, for example unauthorized."
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "description": "What went wrong, in plain words.",
+            "nullable": true
+          },
+          "ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Ids",
+            "description": "The rejected values as sent, each flattened to one line and cut to 40 characters (a cut value ends in ...).",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "title": "ErrorBody",
+        "description": "Every HTTP error: a machine code and a reason to relay."
+      },
+      "EtaResult": {
+        "properties": {
+          "status": {
+            "description": "ok: data follows. not_available: the item does not allow this action. not_found: no such item. Relay reason when not ok.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ActionStatus"
+              }
+            ]
+          },
+          "action": {
+            "$ref": "#/components/schemas/CatalogAction"
+          },
+          "itemId": {
+            "type": "string",
+            "title": "Itemid",
+            "description": "The matched service item number when found, else the id as typed."
+          },
+          "typedId": {
+            "type": "string",
+            "title": "Typedid",
+            "description": "The id as typed, only when it differs from itemId.",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "description": "Why the status is not ok.",
+            "nullable": true
+          },
+          "availableActions": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogAction"
+            },
+            "type": "array",
+            "title": "Availableactions",
+            "description": "The item's available actions, on not_available.",
+            "nullable": true
+          },
+          "nextShipDate": {
+            "type": "string",
+            "format": "date",
+            "title": "Nextshipdate",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "integer",
+            "title": "Quantity",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "action",
+          "itemId"
+        ],
+        "title": "EtaResult",
+        "description": "getEta result."
+      },
+      "InventoryResult": {
+        "properties": {
+          "status": {
+            "description": "ok: data follows. not_available: the item does not allow this action. not_found: no such item. Relay reason when not ok.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ActionStatus"
+              }
+            ]
+          },
+          "action": {
+            "$ref": "#/components/schemas/CatalogAction"
+          },
+          "itemId": {
+            "type": "string",
+            "title": "Itemid",
+            "description": "The matched service item number when found, else the id as typed."
+          },
+          "typedId": {
+            "type": "string",
+            "title": "Typedid",
+            "description": "The id as typed, only when it differs from itemId.",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "description": "Why the status is not ok.",
+            "nullable": true
+          },
+          "availableActions": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogAction"
+            },
+            "type": "array",
+            "title": "Availableactions",
+            "description": "The item's available actions, on not_available.",
+            "nullable": true
+          },
+          "warehouse": {
+            "type": "string",
+            "title": "Warehouse",
+            "nullable": true
+          },
+          "onHand": {
+            "type": "integer",
+            "title": "Onhand",
+            "nullable": true
+          },
+          "allocated": {
+            "type": "integer",
+            "title": "Allocated",
+            "nullable": true
+          },
+          "available": {
+            "type": "integer",
+            "title": "Available",
+            "nullable": true
+          },
+          "asOf": {
+            "type": "string",
+            "format": "date",
+            "title": "Asof",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "action",
+          "itemId"
+        ],
+        "title": "InventoryResult",
+        "description": "getInventory result."
+      },
+      "ItemType": {
+        "type": "string",
+        "enum": [
+          "Pack",
+          "Component",
+          "StandardPack",
+          "TempComponent",
+          "NotFound"
+        ],
+        "title": "ItemType",
+        "description": "What an identifier is."
+      },
+      "QuantityDifference": {
+        "properties": {
+          "componentId": {
+            "type": "string",
+            "title": "Componentid"
+          },
+          "firstQuantity": {
+            "type": "integer",
+            "title": "Firstquantity"
+          },
+          "secondQuantity": {
+            "type": "integer",
+            "title": "Secondquantity"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "componentId",
+          "firstQuantity",
+          "secondQuantity"
+        ],
+        "title": "QuantityDifference",
+        "description": "A component both packs hold in different quantities."
+      },
+      "ShelfItemResult": {
+        "properties": {
+          "status": {
+            "description": "ok: data follows. not_available: the item does not allow this action. not_found: no such item. Relay reason when not ok.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ActionStatus"
+              }
+            ]
+          },
+          "action": {
+            "$ref": "#/components/schemas/CatalogAction"
+          },
+          "itemId": {
+            "type": "string",
+            "title": "Itemid",
+            "description": "The matched service item number when found, else the id as typed."
+          },
+          "typedId": {
+            "type": "string",
+            "title": "Typedid",
+            "description": "The id as typed, only when it differs from itemId.",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "description": "Why the status is not ok.",
+            "nullable": true
+          },
+          "availableActions": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogAction"
+            },
+            "type": "array",
+            "title": "Availableactions",
+            "description": "The item's available actions, on not_available.",
+            "nullable": true
+          },
+          "shelfItemId": {
+            "type": "string",
+            "title": "Shelfitemid",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "nullable": true
+          },
+          "unitOfMeasure": {
+            "type": "string",
+            "title": "Unitofmeasure",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "action",
+          "itemId"
+        ],
+        "title": "ShelfItemResult",
+        "description": "getShelfItem result."
+      },
+      "Subpack": {
+        "properties": {
+          "subpackId": {
+            "type": "string",
+            "title": "Subpackid"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "quantity": {
+            "type": "integer",
+            "title": "Quantity"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "subpackId",
+          "description",
+          "quantity"
+        ],
+        "title": "Subpack",
+        "description": "One subpack of a pack."
+      },
+      "SubpackResult": {
+        "properties": {
+          "status": {
+            "description": "ok: data follows. not_available: the item does not allow this action. not_found: no such item. Relay reason when not ok.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ActionStatus"
+              }
+            ]
+          },
+          "action": {
+            "$ref": "#/components/schemas/CatalogAction"
+          },
+          "itemId": {
+            "type": "string",
+            "title": "Itemid",
+            "description": "The matched service item number when found, else the id as typed."
+          },
+          "typedId": {
+            "type": "string",
+            "title": "Typedid",
+            "description": "The id as typed, only when it differs from itemId.",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason",
+            "description": "Why the status is not ok.",
+            "nullable": true
+          },
+          "availableActions": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogAction"
+            },
+            "type": "array",
+            "title": "Availableactions",
+            "description": "The item's available actions, on not_available.",
+            "nullable": true
+          },
+          "subpacks": {
+            "items": {
+              "$ref": "#/components/schemas/Subpack"
+            },
+            "type": "array",
+            "title": "Subpacks",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "action",
+          "itemId"
+        ],
+        "title": "SubpackResult",
+        "description": "getSubpack result."
+      }
+    },
+    "securitySchemes": {
+      "apiKeyHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key"
+      }
+    }
+  },
+  "security": [
+    {
+      "apiKeyHeader": []
+    }
+  ]
+}

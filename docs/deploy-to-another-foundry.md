@@ -1,60 +1,44 @@
 # Deploy Agent Assist to another Foundry project
 
-This walks through deploying the hosted agent `agent-assist-skills` into a Foundry project other than the one it was first deployed to. The MAPS mock API stays where it is (App Service `mdlineapps`); only the agent, its toolbox and the API-key connection are created in the new project. Nothing in the repository is tied to a particular project: the target comes entirely from an azd environment.
+This walks through deploying the hosted agent into a Foundry project other than the one it was first deployed to. The MAPS mock API stays where it is (App Service `mdlineapps`); only the agent, its toolbox and the API-key connection are created in the new project. Nothing in the repository is tied to a particular project.
 
-Everything below was exercised against `VSI-PROJ` on 2026-11-03. Commands are shown for Git Bash; a PowerShell variant is given where it differs.
+There are two ways to run the steps. **Path A** needs no Azure Developer CLI (azd): a small .NET program in `tools/deploy` signs in with `DefaultAzureCredential` (Visual Studio, Azure CLI, VS Code or a managed identity) and calls the same Foundry APIs azd uses. This is the path for the team environment. **Path B** uses azd and is kept for machines that have it. Both were exercised against `VSI-PROJ` on 2026-11-03.
 
-## 1. Prerequisites on your machine
+## 1. Prerequisites
 
 | Tool | Version | Check |
 | --- | --- | --- |
 | .NET SDK | 10.0.x (pinned by `global.json`) | `dotnet --version` |
-| Azure CLI | any recent | `az --version` |
-| Azure Developer CLI | 1.27.1 or later | `azd version` (upgrade with `winget upgrade Microsoft.Azd`) |
-| azd extensions | `azure.ai.agents`, `azure.ai.toolboxes`, `azure.ai.connections` | `azd extension list` |
+| A sign-in that `DefaultAzureCredential` can use | Visual Studio (Tools > Options > Azure Service Authentication), or `az login`, or VS Code Azure sign-in | the deployer prints the failing credential if none works |
 | Git | any | `git --version` |
 
-Install the extensions once:
+Roles on the target Foundry project for the account you sign in with:
 
-```bash
-azd extension install azure.ai.agents
-azd extension install azure.ai.toolboxes
-azd extension install azure.ai.connections
-```
+- **Azure AI User** (shown as "Foundry User", role id `53ca6127-db72-4b80-b1b0-d745d6d5456d`) to read and invoke.
+- **Azure AI Project Manager** (or Owner/Contributor on the project resource) to create agents, toolboxes and connections. Creating the connection also needs write access to the project ARM resource, since connections are ARM resources.
 
-Sign in with the account that has access to the target subscription, and make azd use that same sign-in (azd keeps its own login and can silently be a different account):
-
-```bash
-az login
-azd config set auth.useAzCliAuth true
-azd auth login --check-status
-```
+If the sign-in has several tenants or subscriptions, set `AZURE_TENANT_ID` so the credential picks the right one. On a developer machine without a managed identity, set `AZURE_TOKEN_CREDENTIALS=dev` so `DefaultAzureCredential` does not spend time probing the instance metadata endpoint.
 
 ## 2. What the target project needs
 
-- A Foundry project (an account of kind `AIServices` with a project under it).
+- A Foundry project (an `AIServices` account with a project under it).
 - A chat model deployment in that project, for example `gpt-4.1-mini` or `gpt-5.4-mini`.
-- Your account holding the **Azure AI User** role (role id `53ca6127-db72-4b80-b1b0-d745d6d5456d`, shown as "Foundry User" in the portal) on the project. `azd ai agent doctor` checks this.
 
-Find the values you will need:
+Values you will need, and where to read them in the Foundry portal (https://ai.azure.com, open the project, **Overview**):
+
+| Value | Where |
+| --- | --- |
+| Project endpoint, `https://<account>.services.ai.azure.com/api/projects/<project>` | Overview > Endpoints and keys > Foundry project endpoint |
+| Project ARM id, `/subscriptions/.../resourceGroups/.../providers/Microsoft.CognitiveServices/accounts/<account>/projects/<project>` | Overview > Properties (resource id), or Management center > Project details |
+| Model deployment name | Models + endpoints |
+
+With the Azure CLI, if available:
 
 ```bash
-# Projects in the subscription, with their ARM ids
-az resource list --resource-type "Microsoft.CognitiveServices/accounts/projects" \
-  --query "[].{name:name,rg:resourceGroup,loc:location,id:id}" -o table
-
-# The project's endpoint (replace <project-arm-id>)
-az rest --method get --url "https://management.azure.com<project-arm-id>?api-version=2025-06-01" \
-  --query "properties.endpoints.\"AI Foundry API\"" -o tsv
-
-# Model deployments on the account (replace <account> and <rg>)
+az resource list --resource-type "Microsoft.CognitiveServices/accounts/projects" --query "[].{name:name,rg:resourceGroup,id:id}" -o table
+az rest --method get --url "https://management.azure.com<project-arm-id>?api-version=2025-06-01" --query "properties.endpoints.\"AI Foundry API\"" -o tsv
 az cognitiveservices account deployment list -n <account> -g <rg> -o table
-
-# Subscription and tenant
-az account show --query "{subscription:id,tenant:tenantId}" -o json
 ```
-
-The endpoint has the form `https://<account>.services.ai.azure.com/api/projects/<project>`.
 
 ## 3. Get the code and prove it builds
 
@@ -65,131 +49,124 @@ dotnet build -c Release
 dotnet test -c Release
 ```
 
-The tests are offline (a scripted model stands in for the LLM). Expect 0 warnings and all tests passing before you go further.
+The tests are offline (a scripted model stands in for the LLM). Expect 0 warnings and all tests passing before going further. The solution also builds `tools/deploy`.
 
-## 4. Create the azd environment for the target
+## Path A: deploy without azd (`tools/deploy`)
 
-One environment per target project. The name is yours to choose; it only names the folder under `.azure/`, which is not committed.
+### A1. Settings
+
+The deployer reads environment variables, or a `.env` file in the current folder or any parent (the repo's `.gitignore` keeps `.env` out of git). Create `.env` in the repository root:
+
+```env
+FOUNDRY_PROJECT_ENDPOINT=https://<account>.services.ai.azure.com/api/projects/<project>
+AZURE_AI_PROJECT_ID=/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.CognitiveServices/accounts/<account>/projects/<project>
+AZURE_AI_MODEL_DEPLOYMENT_NAME=gpt-4.1-mini
+AZURE_TOKEN_CREDENTIALS=dev
+# Optional, these are the defaults:
+# AGENT_NAME=agent-assist-skills
+# TOOLBOX_NAME=maps-tools
+# CONNECTION_NAME=maps-mock-key
+# MOCK_API_URL=https://mdlineapps-f0bgc7e5cyasdths.westus3-01.azurewebsites.net
+# Only for the connection step; never commit it:
+# MOCK_API_KEY=<the mock web app's MOCK_API_KEY setting>
+```
+
+In PowerShell the same values can be set with `$env:FOUNDRY_PROJECT_ENDPOINT = "..."` instead of a file.
+
+### A2. The API-key connection
+
+The toolbox authenticates to the mock API through a project connection named `maps-mock-key` (category **Custom keys**) holding the header `x-api-key`. The key is the mock web app's `MOCK_API_KEY` application setting (App Service `mdlineapps`, resource group `az-vsi`); read it in the Azure portal or with `az webapp config appsettings list -n mdlineapps -g az-vsi --query "[?name=='MOCK_API_KEY'].value" -o tsv`.
+
+Either create it in the portal: **Management center** > **Connected resources** > **New connection** > **Custom keys**, name `maps-mock-key`, one key `x-api-key` with the value above, target the mock URL.
+
+Or let the deployer do it (ARM `PUT` on the project's connection resource):
+
+```bash
+MOCK_API_KEY=<key> dotnet run --project tools/deploy -- connection
+```
+
+Rerunning with `MOCK_API_KEY` set updates the key; rerunning without it just reports that the connection exists.
+
+### A3. The toolbox
+
+```bash
+dotnet run --project tools/deploy -- toolbox
+```
+
+This reads `toolbox/maps.openapi.json` (the mock's Foundry OpenAPI spec), creates a new version of the `maps-tools` toolbox with one OpenAPI tool named `maps` authenticated through `<project-id>/connections/maps-mock-key`, makes that version the default, and then lists the tools through the toolbox's MCP endpoint. Expect ten `maps___*` tools. Toolbox versions are immutable, so every run creates a new version; that is how a changed spec is rolled out.
+
+### A4. The agent
+
+```bash
+dotnet run --project tools/deploy -- agent
+```
+
+This stages `src/agent-assist` without build output, editor state or `.env` files, zips it with the sources at the zip root, and uploads it as a hosted agent version (runtime `dotnet_10`, entry point `dotnet agent-assist.dll`, remote build, Responses protocol 2.0.0, 0.5 CPU and 1 GiB, environment `AZURE_AI_MODEL_DEPLOYMENT_NAME` and `TOOLBOX_NAME`). The first run creates the agent; later runs add versions. It then polls until the version is `active` (Foundry restores and publishes the project; one to three minutes) and prints the Responses endpoint and the Playground URL.
+
+Foundry versions by content: uploading the same zip and definition again does not mint a new version.
+
+### A5. Smoke test
+
+```bash
+dotnet run --project tools/deploy -- invoke "can you expedite DYNJ40380J?"
+dotnet run --project tools/deploy -- invoke "what is the inventory for DYNJ40380J?"
+```
+
+The first answer should quote the expedite policy and the KSIS contact (loaded from the `support-and-policy` skill). The second should return on-hand, allocated and available quantities (fetched through `maps___classifyItems` then `maps___getInventory`). The Playground in the portal shows the same, with the session log stream.
+
+`dotnet run --project tools/deploy -- all` runs A2 (only when `MOCK_API_KEY` is set), A3 and A4 in one go.
+
+## Path B: deploy with azd
+
+Same outcome, different tooling. Needs azd 1.27.1 or later with the `azure.ai.agents`, `azure.ai.toolboxes` and `azure.ai.connections` extensions, and `azd config set auth.useAzCliAuth true` so azd reuses the Azure CLI sign-in.
 
 ```bash
 azd env new <env-name>
 azd env set AZURE_SUBSCRIPTION_ID "<subscription-id>"
-azd env set AZURE_LOCATION "<region of the project, e.g. eastus2>"
+azd env set AZURE_LOCATION "<region of the project>"
 azd env set AZURE_TENANT_ID "<tenant-id>"
 azd env set AZURE_AI_PROJECT_ID "<project-arm-id>"
 azd env set AZURE_AI_PROJECT_ENDPOINT "<project-endpoint>"
 azd env set FOUNDRY_PROJECT_ENDPOINT "<project-endpoint>"
 azd env set AZURE_AI_MODEL_DEPLOYMENT_NAME "<model-deployment-name>"
-azd env get-values
 ```
 
-Notes:
-
-- Both `AZURE_AI_PROJECT_ENDPOINT` and `FOUNDRY_PROJECT_ENDPOINT` are needed; the agents extension reads the second one when deploying into an existing project and fails with "FOUNDRY_PROJECT_ENDPOINT is required" without it.
-- In Git Bash, prefix commands whose arguments start with `/subscriptions/...` with `MSYS_NO_PATHCONV=1`, or the shell rewrites the ARM id into a Windows path. PowerShell has no such issue.
-- No `azd provision` is needed: the project and model already exist, and `azure.yaml` declares only the agent.
-
-## 5. Create the API-key connection for the mock API
-
-The toolbox authenticates to the mock API through a project connection named `maps-mock-key` (category **Custom keys**), holding the header `x-api-key`. The key itself is the mock web app's `MOCK_API_KEY` setting; read it with your own account:
-
-```bash
-az webapp config appsettings list -n mdlineapps -g az-vsi --query "[?name=='MOCK_API_KEY'].value" -o tsv
-```
-
-Create the connection in the target project. The portal route is the one Microsoft documents for OpenAPI API-key auth:
-
-1. Open the project at https://ai.azure.com, then **Management center** > **Connected resources** > **New connection**.
-2. Choose **Custom keys**.
-3. Name: `maps-mock-key`. Add one key: name `x-api-key`, value the key from above. Target (if asked): `https://mdlineapps-f0bgc7e5cyasdths.westus3-01.azurewebsites.net`.
-4. Save.
-
-The same connection as an ARM call, if you prefer the command line (this is the resource shape the existing connection has; the key goes in `credentials.keys`):
-
-```bash
-MSYS_NO_PATHCONV=1 az rest --method put \
-  --url "https://management.azure.com<project-arm-id>/connections/maps-mock-key?api-version=2025-06-01" \
-  --body '{"properties":{"category":"CustomKeys","authType":"CustomKeys","target":"https://mdlineapps-f0bgc7e5cyasdths.westus3-01.azurewebsites.net","credentials":{"keys":{"x-api-key":"<MOCK_API_KEY>"}},"metadata":{"purpose":"MAPS mock OpenAPI tool"}}}'
-```
-
-Verify it exists (the key is never returned):
-
-```bash
-MSYS_NO_PATHCONV=1 az rest --method get \
-  --url "https://management.azure.com<project-arm-id>/connections/maps-mock-key?api-version=2025-06-01" \
-  --query "{category:properties.category,authType:properties.authType,target:properties.target}" -o json
-```
-
-## 6. Create the toolbox
-
-`toolbox/maps.toolbox.yaml` is a template: the connection reference contains `${AZURE_AI_PROJECT_ID}`. The script fills it from the azd environment, creates the toolbox and sets `TOOLBOX_NAME`:
-
-```bash
-scripts/create-toolbox.sh
-```
-
-```powershell
-scripts\create-toolbox.ps1
-```
-
-Check the result; the consumer endpoint must list ten `maps___*` tools:
-
-```bash
-azd ai toolbox show maps-tools --project-endpoint "<project-endpoint>" --output json
-```
-
-Toolbox versions are immutable and the CLI cannot add an OpenAPI tool to an existing toolbox. After editing the template, rerun with `--replace` (bash) or `-Replace` (PowerShell), which deletes and recreates it.
-
-## 7. Pick the agent name
-
-`azure.yaml` deploys the agent as `agent-assist-skills`. Agent names are unique per project, so if that name is taken in the target, change both the service key and `name:` in `azure.yaml` (they must match), and use the new name in the commands below.
-
-## 8. Deploy
+Then the connection as in A2, the toolbox with `scripts/create-toolbox.sh` (or `.ps1`, which render `toolbox/maps.toolbox.yaml` for the active environment and set `TOOLBOX_NAME`), and:
 
 ```bash
 azd deploy --no-prompt
 azd ai agent show agent-assist-skills --output json
-```
-
-`azd deploy` zips `src/agent-assist` (honouring `.agentignore`, so `skills/` ships and `.env` does not), uploads it, has Foundry run `dotnet publish`, registers a new agent version and waits for it to become active. Expect about one to two minutes. The output ends with the Playground URL and the Responses endpoint.
-
-The first deploy into a project creates the agent and its managed identity. In `VSI-PROJ` that identity could read the toolbox without any extra role assignment; see Troubleshooting if yours cannot.
-
-## 9. Smoke test
-
-```bash
-azd ai agent invoke agent-assist-skills --new-session "can you expedite DYNJ40380J?"
 azd ai agent invoke agent-assist-skills --new-session "what is the inventory for DYNJ40380J?"
-```
-
-The first answer should quote the expedite policy and the KSIS contact (loaded from the `support-and-policy` skill). The second should return on-hand, allocated and available quantities (fetched through `maps___classifyItems` then `maps___getInventory`). The container log proves what happened:
-
-```bash
 azd ai agent monitor agent-assist-skills --tail 100
 ```
 
-Look for `Toolbox 'maps-tools': discovered 10 tool(s)` at startup and `Loading skill: ...` lines during the turn.
+In Git Bash, prefix commands whose arguments start with `/subscriptions/...` with `MSYS_NO_PATHCONV=1`.
 
-## 10. Day-to-day changes
+## Agent name
+
+Both paths deploy the agent as `agent-assist-skills`. Agent names are unique per project. To use another name: Path A, set `AGENT_NAME`; Path B, change both the service key and `name:` in `azure.yaml`.
+
+## Day-to-day changes
 
 | Change | Steps |
 | --- | --- |
-| A skill or the base prompt | edit under `src/agent-assist/skills/` or `Prompts/`, `dotnet test -c Release`, `azd deploy` |
-| Code | `dotnet build -c Release`, `dotnet test -c Release`, `azd deploy` |
-| The tool set | edit `toolbox/maps.toolbox.yaml`, `scripts/create-toolbox.sh --replace`, no redeploy needed (the agent discovers tools at startup; restart by redeploying or wait for a new session) |
-| The mock API key | update the `maps-mock-key` connection in the portal; no redeploy needed |
-| Remove the agent | `azd ai agent delete agent-assist-skills` |
+| A skill or the base prompt | edit under `src/agent-assist/skills/` or `Prompts/`, `dotnet test -c Release`, `deploy agent` (or `azd deploy`) |
+| Code | `dotnet build -c Release`, `dotnet test -c Release`, `deploy agent` |
+| The tool set | update `toolbox/maps.openapi.json` from the mock's `/openapi.foundry.json` (and `toolbox/maps.toolbox.yaml` if azd is used), `deploy toolbox`; new sessions pick it up, no agent redeploy needed |
+| The mock API key | `MOCK_API_KEY=<new> deploy connection`, or update the connection in the portal; no redeploy needed |
+| Remove the agent | portal, or `azd ai agent delete agent-assist-skills` |
 
 ## Troubleshooting
 
 | Symptom | Cause and fix |
 | --- | --- |
-| `FOUNDRY_PROJECT_ENDPOINT is required` on `azd deploy` | Set it with `azd env set FOUNDRY_PROJECT_ENDPOINT "<project-endpoint>"` (step 4). |
-| `azd auth login --check-status` shows a different account than `az` | Run `azd config set auth.useAzCliAuth true`, or `azd auth login` with the right account. |
-| Invoke returns HTTP 424 `session_not_ready` | The container did not pass `/readiness`. Run `azd ai agent monitor agent-assist-skills` and read the startup lines: an unhandled exception means a startup crash; `Connecting to toolbox` with no `discovered` line means the toolbox could not be read; otherwise it is a cold start, so wait 30 seconds and retry. |
-| Toolbox connect fails with 401/403 at startup | The agent's identity cannot read the project. Grant it the Azure AI User role: read `instance_identity.principal_id` from `azd ai agent show agent-assist-skills --output json`, then `az role assignment create --assignee-object-id <principal-id> --assignee-principal-type ServicePrincipal --role 53ca6127-db72-4b80-b1b0-d745d6d5456d --scope "<project-arm-id>"`, and redeploy. |
-| Tool call returns `unknown auth type 'connection'` | The toolbox was created from an unrendered or hand-edited file. The auth must be `type: project_connection` with the connection's full ARM id; rerun `scripts/create-toolbox.sh --replace`. |
-| Tool call returns 401 from the mock | The connection's key is wrong or the key was rotated. Update the `maps-mock-key` connection. |
+| `Azure sign-in failed` from the deployer | No usable credential. Sign in to Visual Studio (Tools > Options > Azure Service Authentication) or run `az login`; set `AZURE_TENANT_ID` if the account spans tenants; `AZURE_TOKEN_CREDENTIALS=dev` avoids the managed-identity probe. |
+| `HTTP 403` creating the agent, toolbox or connection | The account lacks Azure AI Project Manager on the project (or write access to the project ARM resource for connections). |
+| `HTTP 409` on the first agent deploy | The name is taken; set `AGENT_NAME`. |
+| Version ends in `failed` | The remote build failed; open the version in the portal for the build log (usually a NuGet restore or compile error). Build locally first with `dotnet build -c Release`. |
+| Invoke returns HTTP 424 `session_not_ready` | The container did not pass readiness. Open the agent in the portal and read the log stream: an unhandled exception is a startup crash; `Connecting to toolbox` with no `discovered` line means the toolbox could not be read; otherwise it is a cold start, wait 30 seconds and retry. |
+| Toolbox connect fails with 401/403 at startup | The agent's identity cannot read the project. Grant it Azure AI User: read `instance_identity.principal_id` from the version (portal or `GET {endpoint}/agents/{name}/versions/{v}?api-version=v1`), then `az role assignment create --assignee-object-id <principal-id> --assignee-principal-type ServicePrincipal --role 53ca6127-db72-4b80-b1b0-d745d6d5456d --scope "<project-arm-id>"`. In `VSI-PROJ` this was not needed. |
+| Tool call returns `unknown auth type 'connection'` | The toolbox was created from an azd YAML with the old auth shape. Use `deploy toolbox` or `scripts/create-toolbox.sh --replace`. |
+| Tool call returns 401 from the mock | The connection's key is wrong or rotated; rerun `deploy connection` with the current key. |
 | Model errors (404 deployment not found) | `AZURE_AI_MODEL_DEPLOYMENT_NAME` does not match a deployment in the target project; fix it and redeploy. |
-| `No skills found at /app/skills` in the log | The skills folder did not ship. Check `.agentignore` does not exclude `skills/` and that the folder name is lowercase `skills`. |
-| Agent name already exists | Rename in `azure.yaml` (step 7). |
+| `No skills found at /app/skills` in the log | The skills folder did not ship; the deployer refuses to package without it, so check the source folder. |

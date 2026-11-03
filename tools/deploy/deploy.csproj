@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>AgentAssist.Deploy</RootNamespace>
+    <AssemblyName>deploy</AssemblyName>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <!-- AAIP001: preview surface of the Foundry agents SDK (toolboxes, OpenAPI tools). -->
+    <NoWarn>$(NoWarn);AAIP001;NU1605;NU1603</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Foundry project data-plane client: agents and versions (code deploy), toolboxes, sessions.
+      Brings Azure.AI.Projects, Azure.AI.Extensions.OpenAI (OpenAPI tool definitions) and
+      System.ClientModel transitively.
+    -->
+    <PackageReference Include="Azure.AI.Projects.Agents" Version="3.0.0-beta.6" />
+    <!--
+      DefaultAzureCredential (Visual Studio, Azure CLI, VS Code and managed identity sign-ins) ships
+      inside Azure.Core 1.64, which this SDK brings; referencing Azure.Identity as well makes the type
+      ambiguous, so it is deliberately not listed.
+    -->
+    <!-- Local convenience: loads a .env from the current folder or its parents when present. -->
+    <PackageReference Include="DotNetEnv" Version="3.1.1" />
+  </ItemGroup>
+
+</Project>

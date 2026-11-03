@@ -8,6 +8,7 @@ This project was built with the microsoft-foundry skill. Before working on or an
 
 - Build: `dotnet build -c Release`
 - Test: `dotnet test` (offline; scripted model; the script test needs `python` on PATH)
+- Deploy without azd: `dotnet run --project tools/deploy -- agent` (see docs/deploy-to-another-foundry.md)
 
 ## Rules
 
@@ -18,5 +19,5 @@ This project was built with the microsoft-foundry skill. Before working on or an
 - Tables go in `references/`, deterministic helpers in `scripts/*.py` (stdlib only).
 - Run the tests after editing a skill.
 - C# helpers for skills live in `SkillRuntime/`, never in a `Skills/` folder (same folder as `skills/` on Windows).
-- Data tools are attached through the toolbox file (`toolbox/maps.toolbox.yaml`, loaded by name via `TOOLBOX_NAME`), never as C# functions.
+- Data tools are attached through the toolbox (`toolbox/maps.openapi.json` for `tools/deploy`, `toolbox/maps.toolbox.yaml` for azd; loaded by name via `TOOLBOX_NAME`), never as C# functions. Keep the two spec copies in sync with the mock's `/openapi.foundry.json`.
 - Never commit `.env`; never copy values from the MAPS conversation agent's `.env.example`.

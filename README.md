@@ -54,6 +54,9 @@ AgentAssist/
       support-and-policy/SKILL.md
   toolbox/maps.toolbox.yaml        Foundry toolbox definition: the MAPS mock API as an OpenAPI tool (generated)
   tests/agent-assist.tests/        xunit, scripted model, real AgentHost over HTTP; all offline
+  tools/deploy/                    no-azd deployer: connection, toolbox, agent version upload, invoke
+  toolbox/maps.openapi.json        the mock's OpenAPI spec, source for the toolbox tool
+  scripts/create-toolbox.*         azd-path toolbox creation from toolbox/maps.toolbox.yaml
 ```
 
 The C# helpers live in `SkillRuntime/`, not `Skills/`: on Windows `Skills` and `skills` are the same folder, which would mix code into the skills content and break the `skills\**\*` copy on a case-sensitive Linux build.
@@ -98,7 +101,13 @@ azd ai agent show agent-assist-skills
 azd ai agent invoke agent-assist-skills "can you expedite DYNJ40380J?"
 ```
 
-To deploy into a different Foundry project (new azd environment, API-key connection, toolbox, deploy, smoke test), follow [docs/deploy-to-another-foundry.md](docs/deploy-to-another-foundry.md). First-time setup on this project from another machine:
+To deploy into a different Foundry project, follow [docs/deploy-to-another-foundry.md](docs/deploy-to-another-foundry.md). It has two paths: `tools/deploy`, a small .NET program that needs no azd and signs in with `DefaultAzureCredential` (Visual Studio, Azure CLI or VS Code), and the azd path below. The no-azd path, in short:
+
+```
+dotnet run --project tools/deploy -- toolbox
+dotnet run --project tools/deploy -- agent
+dotnet run --project tools/deploy -- invoke "what is the inventory for DYNJ40380J?"
+``` First-time setup on this project from another machine:
 
 ```
 azd env set AZURE_AI_MODEL_DEPLOYMENT_NAME gpt-5.4-mini
