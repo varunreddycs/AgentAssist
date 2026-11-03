@@ -33,7 +33,7 @@ public sealed class HostedResponsesTests(ITestOutputHelper output)
         try
         {
             var builder = AgentHost.CreateBuilder([]);
-            builder.Services.AddFoundryResponses(agent);
+            builder.WebApplicationBuilder.AddFoundryResponses(agent);
             builder.RegisterProtocol("responses", endpoints => endpoints.MapFoundryResponses());
             var host = builder.Build();
             app = host.App; // the underlying WebApplication

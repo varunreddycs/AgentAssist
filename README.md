@@ -85,12 +85,24 @@ The azd way (from the repository root): `azd ai agent run --no-client`, then `az
 
 ## Deploy
 
+Deployed on 2026-11-03 as hosted agent `agent-assist-skills` (version 2; version 1 crashed at startup because the `IServiceCollection` overload of `AddFoundryResponses` is rejected in the hosted environment on 1.27, so `Program.cs` uses `builder.WebApplicationBuilder.AddFoundryResponses(agent)`) into the Foundry project `VSI-PROJ` (account `VSI`, resource group `az-vsi`, East US 2) with model deployment `gpt-4.1-mini`. The azd environment `agent-assist` (under `.azure/`, not committed) holds `AZURE_SUBSCRIPTION_ID`, `AZURE_LOCATION`, `AZURE_TENANT_ID`, `AZURE_AI_PROJECT_ID`, `AZURE_AI_PROJECT_ENDPOINT`, `FOUNDRY_PROJECT_ENDPOINT` and `AZURE_AI_MODEL_DEPLOYMENT_NAME`; the extension needs `FOUNDRY_PROJECT_ENDPOINT` to deploy into an existing project. azd was set to reuse the Azure CLI sign-in (`azd config set auth.useAzCliAuth true`).
+
+To ship a new version after a change:
+
+```
+azd deploy
+azd ai agent show agent-assist-skills
+azd ai agent invoke agent-assist-skills "can you expedite DYNJ40380J?"
+```
+
+First-time setup on another machine:
+
 ```
 azd env set AZURE_AI_MODEL_DEPLOYMENT_NAME gpt-5.4-mini
 azd deploy
 ```
 
-`azure.yaml` requires azd 1.27.1 or later and the `azure.ai.agents` extension (1.0.0-beta.9 or later). This machine has azd 1.25.5, so run `winget upgrade Microsoft.Azd` first. `azure.yaml` declares only the agent service: it deploys into the existing Foundry project selected by the azd environment (no `ai-project` service is provisioned). The hosted runtime injects `FOUNDRY_PROJECT_ENDPOINT`; the code-deploy ZIP includes `skills/` (`.agentignore` excludes only secrets and build output). If `skills/` is missing or empty the agent refuses to start (`InvalidOperationException: No skills found at ...`), so a container without its playbooks never reports healthy. The container image needs Python 3 on PATH for `run_skill_script`; without it the tool answers "Python interpreter not found" and the rest of the agent keeps working.
+`azure.yaml` requires azd 1.27.1 or later and the `azure.ai.agents` extension (1.0.0-beta.9 or later); `winget upgrade Microsoft.Azd` if needed. `azure.yaml` declares only the agent service: it deploys into the existing Foundry project selected by the azd environment (no `ai-project` service is provisioned). The hosted runtime injects `FOUNDRY_PROJECT_ENDPOINT`; the code-deploy ZIP includes `skills/` (`.agentignore` excludes only secrets and build output). If `skills/` is missing or empty the agent refuses to start (`InvalidOperationException: No skills found at ...`), so a container without its playbooks never reports healthy. The container image needs Python 3 on PATH for `run_skill_script`; without it the tool answers "Python interpreter not found" and the rest of the agent keeps working.
 
 ## Add a skill
 
@@ -120,4 +132,4 @@ Skill tools run without an approval prompt (`DisableLoadSkillApproval`, `Disable
 
 ## Status
 
-Builds with 0 warnings and all tests pass (offline, including two HTTP turns through the real `AgentHost`). Not yet run against a live Foundry project or model.
+Builds with 0 warnings and all tests pass (offline, including two HTTP turns through the real `AgentHost`). Deployed to Foundry as `agent-assist-skills` version 2 and smoke-tested: an expedite question was answered from the support-and-policy skill.

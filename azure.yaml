@@ -5,7 +5,7 @@ requiredVersions:
     azure.ai.agents: '>=1.0.0-beta.9'
 name: agent-assist
 services:
-  agent-assist:
+  agent-assist-skills:
     host: azure.ai.agent
     project: src/agent-assist
     language: csharp
@@ -14,8 +14,8 @@ services:
       entryPoint: agent-assist.dll
       dependencyResolution: remote_build
     kind: hosted
-    name: agent-assist
-    displayName: Agent Assist
+    name: agent-assist-skills
+    displayName: Agent Assist (skills)
     description: MAPS conversational front door whose playbooks are Agent Skills (SKILL.md) loaded on demand instead of a long prompt.
     protocols:
       - protocol: responses

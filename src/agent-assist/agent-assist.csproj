@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -9,6 +9,7 @@
     <Nullable>enable</Nullable>
     <!-- OPENAI001 / MEAI001: preview APIs used by the Foundry hosting packages. -->
     <NoWarn>$(NoWarn);NU1903;NU1605;OPENAI001;MEAI001</NoWarn>
+    <UserSecretsId>d9a92531-7092-4505-90e6-2d3e18fa0b2c</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

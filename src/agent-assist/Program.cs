@@ -53,7 +53,9 @@ log.LogInformation("agent-assist starting: model {Model}, skills {SkillsPath}, p
 // context). AddFoundryResponses: Responses protocol handler; it persists the AgentSession per
 // user and conversation, which keeps the conversation going across turns.
 var builder = AgentHost.CreateBuilder(args);
-builder.Services.AddFoundryResponses(agent);
+// The host-builder overload: in the hosted environment the IServiceCollection overload throws at
+// startup (response and task storage must bind from the host configuration).
+builder.WebApplicationBuilder.AddFoundryResponses(agent);
 builder.RegisterProtocol("responses", endpoints => endpoints.MapFoundryResponses());
 
 var app = builder.Build();
