@@ -20,6 +20,12 @@ public sealed record AgentSettings
 
     public required TimeSpan ScriptTimeout { get; init; }
 
+    /// <summary>
+    /// Foundry toolboxes whose tools the agent serves (TOOLBOX_NAME, comma-separated). Toolboxes are
+    /// the only way data tools reach this agent; none means skills only.
+    /// </summary>
+    public required IReadOnlyList<string> ToolboxNames { get; init; }
+
     public static AgentSettings FromEnvironment()
     {
         var endpoint = Get("FOUNDRY_PROJECT_ENDPOINT")
@@ -40,6 +46,7 @@ public sealed record AgentSettings
             SkillsPath = Get("AGENT_SKILLS_PATH") ?? Path.Combine(AppContext.BaseDirectory, "skills"),
             PythonExecutable = Get("AGENT_SKILLS_PYTHON") ?? (OperatingSystem.IsWindows() ? "python" : "python3"),
             ScriptTimeout = TimeSpan.FromSeconds(timeoutSeconds),
+            ToolboxNames = Get("TOOLBOX_NAME")?.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries) ?? [],
         };
 
         static string? Get(string name)

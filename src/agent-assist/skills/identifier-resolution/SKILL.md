@@ -15,7 +15,7 @@ metadata:
 
 ## Never guess
 - Never guess or "fix" a number. If a number looks mistyped, ask.
-- Never infer the type (pack, component, quote, account) from the shape of the number alone, and never ask the user what type it is if a tool can tell you. Until a lookup tool is connected, say what you can and cannot check.
+- Never infer the type (pack, component, quote, account) from the shape of the number alone, and never ask the user what type it is if a tool can tell you. Call `maps___classifyItems` with the identifiers exactly as typed (comma-separated in `ids`) and use the type, status and available actions it returns.
 
 ## Bare identifiers (the message is only numbers)
 1. One number: ask what they want to do with it, as a numbered list of the actions for that item (Subpack, Inventory, ETA, Approvers, BOM for a pack; Choice items, Shelf item, Component details for a component).

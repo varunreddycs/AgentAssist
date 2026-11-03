@@ -18,4 +18,5 @@ This project was built with the microsoft-foundry skill. Before working on or an
 - Tables go in `references/`, deterministic helpers in `scripts/*.py` (stdlib only).
 - Run the tests after editing a skill.
 - C# helpers for skills live in `SkillRuntime/`, never in a `Skills/` folder (same folder as `skills/` on Windows).
+- Data tools are attached through the toolbox file (`toolbox/maps.toolbox.yaml`, loaded by name via `TOOLBOX_NAME`), never as C# functions.
 - Never commit `.env`; never copy values from the MAPS conversation agent's `.env.example`.

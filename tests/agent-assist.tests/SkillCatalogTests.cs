@@ -7,12 +7,12 @@ namespace AgentAssist.Tests;
 public sealed class SkillCatalogTests
 {
     [Fact]
-    public void All_four_skills_load_with_name_equal_to_folder()
+    public void All_five_skills_load_with_name_equal_to_folder()
     {
         var skills = SkillCatalog.Load(TestAgent.SkillsPath);
 
         Assert.Equal(
-            ["clarification", "identifier-resolution", "response-style", "support-and-policy"],
+            ["clarification", "identifier-resolution", "maps-data", "response-style", "support-and-policy"],
             skills.Select(s => s.Name));
         Assert.All(skills, s =>
         {

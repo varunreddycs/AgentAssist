@@ -48,7 +48,7 @@ public sealed class SkillsProgressiveDisclosureTests(ITestOutputHelper output)
     {
         var (agent, model) = TestAgent.Create();
         var skills = SkillCatalog.Load(TestAgent.SkillsPath);
-        Assert.Equal(4, skills.Count);
+        Assert.Equal(5, skills.Count);
 
         ModelCall? first = null;
         model.Then(call =>

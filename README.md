@@ -1,10 +1,10 @@
 # Agent Assist
 
-Agent Assist is a Microsoft Foundry **hosted agent** written in C# (.NET 10, Microsoft Agent Framework). It is the conversational front door for MAPS (MedPack and MedQuote) users. Its behaviour does not live in one long system prompt: the base instructions are six short lines, and every playbook (identifiers, clarification, support and policy, response style) is an **Agent Skill**, a `SKILL.md` folder that the model loads on demand. It has the same shape as the MAPS conversation agent (`Program.cs` + `AgentComposition.cs`, `AgentHost` + Responses protocol, scripted-model tests), so it drops into the team's build and deploy process.
+Agent Assist is a Microsoft Foundry **hosted agent** written in C# (.NET 10, Microsoft Agent Framework). It is the conversational front door for MAPS (MedPack and MedQuote) users. Its behaviour does not live in one long system prompt: the base instructions are seven short lines, and every playbook (identifiers, clarification, MAPS data, support and policy, response style) is an **Agent Skill**, a `SKILL.md` folder that the model loads on demand. It has the same shape as the MAPS conversation agent (`Program.cs` + `AgentComposition.cs`, `AgentHost` + Responses protocol, scripted-model tests), so it drops into the team's build and deploy process.
 
 ## Why skills instead of a long prompt
 
-- **Tokens.** A system prompt is paid on every model call. Here the model always receives the base prompt (about 560 characters, roughly 140 tokens) plus the skills index (the framework's short instruction block plus name and description per skill, roughly 75 tokens per skill, about 300 for four skills plus about 175 for the block). The skill bodies (about 1,600 tokens together) and the reference table (about 280 tokens) are sent only on the turns that load them. The MAPS conversation agent's prompt, for comparison, is about 2,800 characters on every call, and it grows with every rule added. Estimates use 4 characters per token.
+- **Tokens.** A system prompt is paid on every model call. Here the model always receives the base prompt (about 690 characters, roughly 170 tokens) plus the skills index (the framework's short instruction block plus name and description per skill, roughly 75 tokens per skill, about 375 for five skills plus about 175 for the block) and the toolbox tool definitions. The skill bodies (about 1,600 tokens together) and the reference table (about 280 tokens) are sent only on the turns that load them. The MAPS conversation agent's prompt, for comparison, is about 2,800 characters on every call, and it grows with every rule added. Estimates use 4 characters per token.
 - **One place per playbook.** Each skill has an owner (`metadata.owner`) and one topic. Changing the expedite wording means editing `support-and-policy/SKILL.md`, not hunting through a prompt.
 - **Updates without touching code.** A skill is a Markdown file shipped next to the binary. Editing one changes no C#; the tests then confirm it still loads and is advertised.
 - **The documented mechanism.** This is the Agent Framework's `AgentSkillsProvider`, exactly as the C# docs describe: https://learn.microsoft.com/en-us/agent-framework/agents/skills?pivots=programming-language-csharp
@@ -22,6 +22,7 @@ Agent Assist is a Microsoft Foundry **hosted agent** written in C# (.NET 10, Mic
 | --- | --- | --- | --- |
 | `clarification` | When and how to ask the user a clarifying question, including one question per turn, numbered choices, resolving references like 'the second one' or 'that pack', subpack versus pack compare, and how many packs a compare needs. Use before asking any question that is not a simple yes or no. | none | none |
 | `identifier-resolution` | How to recognise and handle MedPack and MedQuote identifiers (pack, component, standard pack, temporary component, quote and account numbers), bare-number messages, multiple numbers, hyphenated pack numbers, and items that are not found, discontinued or being sourced. Use the first time identifiers appear in a conversation. | `references/identifier-rules.md` | `scripts/normalize_ids.py` |
+| `maps-data` | Which maps tool answers which MAPS request (classify, subpack, inventory, ETA, approvers, BOM, choice items, shelf item, component details, pack compare), what to pass, and how to report tool errors. Use whenever the user asks for pack or component data or before calling any maps tool. | none | none |
 | `response-style` | How Agent Assist phrases replies, covering length, numbered lists and tables, what never to show (raw JSON, tool names, internal ids), and tone. Use when composing any reply longer than one sentence. | none | none |
 | `support-and-policy` | Support contacts and policy wording for unsupported items (standard packs, temporary components), discontinued or not-found items, expedite requests and escalation, and fields to leave out of answers. Use for unsupported items, expedite, escalation, contact or support questions. | none | none |
 
@@ -48,8 +49,10 @@ AgentAssist/
       identifier-resolution/SKILL.md
       identifier-resolution/references/identifier-rules.md
       identifier-resolution/scripts/normalize_ids.py
+      maps-data/SKILL.md
       response-style/SKILL.md
       support-and-policy/SKILL.md
+  toolbox/maps.toolbox.yaml        Foundry toolbox definition: the MAPS mock API as an OpenAPI tool (generated)
   tests/agent-assist.tests/        xunit, scripted model, real AgentHost over HTTP; all offline
 ```
 
@@ -127,8 +130,10 @@ Skill tools run without an approval prompt (`DisableLoadSkillApproval`, `Disable
 
 ## Deliberately not here
 
-- No function tools of our own and no toolbox yet. Data (pack lookup, inventory, ETA) comes later by reference, as in the MAPS conversation agent; the agent carries no hand-written API-call code.
+- No function tools of our own; the agent carries no hand-written API-call code.
 - No custom middleware, conversation-state provider or delegation to a supervisor.
+
+**Data by reference.** The MAPS mock API is a Foundry toolbox, defined in `toolbox/maps.toolbox.yaml` as one OpenAPI tool whose operations become tools named `maps___<operationId>` (for example `maps___classifyItems`). The agent knows only the toolbox name, through `TOOLBOX_NAME` (`maps-tools`); `Program.cs` passes it to `AddFoundryToolboxes`, which discovers the tools at startup and holds readiness until the toolbox has connected. The API key lives in the Foundry connection `maps-mock-key`, never in this repository. The one-time setup commands are in the header of `toolbox/maps.toolbox.yaml`.
 
 ## Status
 

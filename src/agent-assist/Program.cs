@@ -9,6 +9,8 @@
 //   load_skill            returns a skill's full SKILL.md body when the turn needs it
 //   read_skill_resource   returns a reference file (for example a result table) from a skill
 //   run_skill_script      runs a skill's Python script (SkillRuntime/PythonScriptRunner.cs)
+//   maps___<operationId>  MAPS data tools, not from the skills: served from the Foundry toolbox
+//                         named in TOOLBOX_NAME (AddFoundryToolboxes below); no API-call code here
 //
 // Hosting: AgentHost + AddFoundryResponses + MapFoundryResponses, as in the MAPS conversation agent.
 
@@ -46,8 +48,9 @@ AIAgent agent = AgentComposition.Build(
     scriptRunner: runner.RunAsync,
     loggerFactory: loggerFactory);
 
-log.LogInformation("agent-assist starting: model {Model}, skills {SkillsPath}, python {Python}",
-    settings.ModelDeployment, settings.SkillsPath, settings.PythonExecutable);
+log.LogInformation("agent-assist starting: model {Model}, skills {SkillsPath}, python {Python}, toolboxes {Toolboxes}",
+    settings.ModelDeployment, settings.SkillsPath, settings.PythonExecutable,
+    settings.ToolboxNames.Count > 0 ? string.Join(", ", settings.ToolboxNames) : "none");
 
 // AgentHost: host preconfigured for Foundry (port 8088, readiness, OpenTelemetry, request
 // context). AddFoundryResponses: Responses protocol handler; it persists the AgentSession per
@@ -56,6 +59,13 @@ var builder = AgentHost.CreateBuilder(args);
 // The host-builder overload: in the hosted environment the IServiceCollection overload throws at
 // startup (response and task storage must bind from the host configuration).
 builder.WebApplicationBuilder.AddFoundryResponses(agent);
+// Data by reference: the tools are discovered from the toolbox at startup (MCP tools/list), the
+// toolbox proxy injects the API key from its project connection, and readiness waits until every
+// toolbox has connected. The handler adds the tools to each turn; the agent defines none itself.
+if (settings.ToolboxNames.Count > 0)
+{
+    builder.WebApplicationBuilder.Services.AddFoundryToolboxes(credential, [.. settings.ToolboxNames]);
+}
 builder.RegisterProtocol("responses", endpoints => endpoints.MapFoundryResponses());
 
 var app = builder.Build();

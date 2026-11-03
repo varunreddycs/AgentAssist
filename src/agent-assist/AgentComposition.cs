@@ -58,7 +58,8 @@ public static class AgentComposition
             },
             loggerFactory: loggerFactory);
 
-        // No function tools of our own: data tools arrive later by reference (toolbox), so the
+        // No function tools of our own: data tools come by reference from the Foundry toolbox that
+        // Program.cs registers (AddFoundryToolboxes), so the
         // agent carries no hand-written API-call code.
         return createCoreAgent(new ChatClientAgentOptions
         {

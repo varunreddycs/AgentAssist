@@ -15,6 +15,7 @@ public static class AgentInstructions
         Your domain knowledge lives in skills. Before you answer about identifiers, clarification, support, policy or escalation, load the matching skill with load_skill and follow it. Load only what the turn needs.
         Ask at most one question per turn.
         Never present business data you did not get from a tool.
+        For pack or component data, load the maps-data skill and call the matching maps tool; never answer such questions from memory.
         Be brief: one or two sentences plus a numbered list or short table when useful. No raw JSON, no tool names.
         For requests outside MAPS, say briefly what you can help with.
         """;
