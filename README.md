@@ -88,7 +88,7 @@ The azd way (from the repository root): `azd ai agent run --no-client`, then `az
 
 ## Deploy
 
-Deployed on 2026-11-03 as hosted agent `agent-assist-skills` (version 2; version 1 crashed at startup because the `IServiceCollection` overload of `AddFoundryResponses` is rejected in the hosted environment on 1.27, so `Program.cs` uses `builder.WebApplicationBuilder.AddFoundryResponses(agent)`) into the Foundry project `VSI-PROJ` (account `VSI`, resource group `az-vsi`, East US 2) with model deployment `gpt-4.1-mini`. The azd environment `agent-assist` (under `.azure/`, not committed) holds `AZURE_SUBSCRIPTION_ID`, `AZURE_LOCATION`, `AZURE_TENANT_ID`, `AZURE_AI_PROJECT_ID`, `AZURE_AI_PROJECT_ENDPOINT`, `FOUNDRY_PROJECT_ENDPOINT` and `AZURE_AI_MODEL_DEPLOYMENT_NAME`; the extension needs `FOUNDRY_PROJECT_ENDPOINT` to deploy into an existing project. azd was set to reuse the Azure CLI sign-in (`azd config set auth.useAzCliAuth true`).
+Deployed on 2026-11-03 as hosted agent `agent-assist-skills` (version 3 with the toolbox; version 2 skills only; version 1 crashed at startup because the `IServiceCollection` overload of `AddFoundryResponses` is rejected in the hosted environment on 1.27, so `Program.cs` uses `builder.WebApplicationBuilder.AddFoundryResponses(agent)`) into the Foundry project `VSI-PROJ` (account `VSI`, resource group `az-vsi`, East US 2) with model deployment `gpt-4.1-mini`. The azd environment `agent-assist` (under `.azure/`, not committed) holds `AZURE_SUBSCRIPTION_ID`, `AZURE_LOCATION`, `AZURE_TENANT_ID`, `AZURE_AI_PROJECT_ID`, `AZURE_AI_PROJECT_ENDPOINT`, `FOUNDRY_PROJECT_ENDPOINT` and `AZURE_AI_MODEL_DEPLOYMENT_NAME`; the extension needs `FOUNDRY_PROJECT_ENDPOINT` to deploy into an existing project. azd was set to reuse the Azure CLI sign-in (`azd config set auth.useAzCliAuth true`).
 
 To ship a new version after a change:
 
@@ -137,4 +137,4 @@ Skill tools run without an approval prompt (`DisableLoadSkillApproval`, `Disable
 
 ## Status
 
-Builds with 0 warnings and all tests pass (offline, including two HTTP turns through the real `AgentHost`). Deployed to Foundry as `agent-assist-skills` version 2 and smoke-tested: an expedite question was answered from the support-and-policy skill.
+Builds with 0 warnings and all tests pass (offline, including two HTTP turns through the real `AgentHost`). Deployed to Foundry as `agent-assist-skills` version 3 and smoke-tested: an expedite question was answered from the support-and-policy skill, and an inventory question for DYNJ40380J was answered with data fetched through the `maps-tools` toolbox (classify, then inventory). The toolbox was read by the agent's own identity without an extra role assignment.
