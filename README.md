@@ -98,7 +98,7 @@ azd ai agent show agent-assist-skills
 azd ai agent invoke agent-assist-skills "can you expedite DYNJ40380J?"
 ```
 
-First-time setup on another machine:
+To deploy into a different Foundry project (new azd environment, API-key connection, toolbox, deploy, smoke test), follow [docs/deploy-to-another-foundry.md](docs/deploy-to-another-foundry.md). First-time setup on this project from another machine:
 
 ```
 azd env set AZURE_AI_MODEL_DEPLOYMENT_NAME gpt-5.4-mini
@@ -133,7 +133,7 @@ Skill tools run without an approval prompt (`DisableLoadSkillApproval`, `Disable
 - No function tools of our own; the agent carries no hand-written API-call code.
 - No custom middleware, conversation-state provider or delegation to a supervisor.
 
-**Data by reference.** The MAPS mock API is a Foundry toolbox, defined in `toolbox/maps.toolbox.yaml` as one OpenAPI tool whose operations become tools named `maps___<operationId>` (for example `maps___classifyItems`). The agent knows only the toolbox name, through `TOOLBOX_NAME` (`maps-tools`); `Program.cs` passes it to `AddFoundryToolboxes`, which discovers the tools at startup and holds readiness until the toolbox has connected. The API key lives in the Foundry connection `maps-mock-key`, never in this repository. The one-time setup commands are in the header of `toolbox/maps.toolbox.yaml`.
+**Data by reference.** The MAPS mock API is a Foundry toolbox, defined in `toolbox/maps.toolbox.yaml` as one OpenAPI tool whose operations become tools named `maps___<operationId>` (for example `maps___classifyItems`). The agent knows only the toolbox name, through `TOOLBOX_NAME` (`maps-tools`); `Program.cs` passes it to `AddFoundryToolboxes`, which discovers the tools at startup and holds readiness until the toolbox has connected. The API key lives in the Foundry connection `maps-mock-key`, never in this repository. The one-time setup commands are in the header of `toolbox/maps.toolbox.yaml`. `scripts/create-toolbox.sh` (or `.ps1`) renders the template for the active azd environment and creates the toolbox.
 
 ## Status
 

@@ -4,3 +4,4 @@ obj/
 *.user
 .vs/
 .azure/
+toolbox/.rendered/

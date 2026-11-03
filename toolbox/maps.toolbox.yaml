@@ -4,21 +4,20 @@
 # The spec below is a copy of https://mdlineapps-f0bgc7e5cyasdths.westus3-01.azurewebsites.net/openapi.foundry.json
 # (regenerate it from there when the mock changes). Each operationId becomes a tool named maps___<operationId>.
 #
-# One-time setup, from this folder (needs the Foundry User role on the project):
-#   1. The API-key connection `maps-mock-key` (category CustomKeys, key x-api-key = MOCK_API_KEY) already exists in
-#      VSI-PROJ; the prompt agent AgentAssist uses the same one. The key lives only there, never in this file or in
-#      git. To rotate it, update that connection in the Foundry portal (Management center > Connections).
-#   2. The toolbox (its first version is published automatically). The auth block below references the
-#      connection by its full ARM resource id (.../projects/VSI-PROJ/connections/maps-mock-key), which is the
-#      shape the toolbox runtime accepts; `type: connection` with a bare name is rejected at call time:
-#        azd ai toolbox create maps-tools --from-file toolbox/maps.toolbox.yaml --project-endpoint "$FOUNDRY_PROJECT_ENDPOINT"
-#   3. Tell the agent which toolbox to load (azure.yaml passes TOOLBOX_NAME into the container):
-#        azd env set TOOLBOX_NAME maps-tools
-#   4. The agent's instance identity needs the Foundry User role (53ca6127-db72-4b80-b1b0-d745d6d5456d) on the
-#      project to read the toolbox at runtime; read its principal id from `azd ai agent show agent-assist-skills`.
+# This file is a template: the AZURE_AI_PROJECT_ID placeholder (written as a shell-style variable on the
+# project_connection_id line) is the target Foundry project's ARM resource id, filled in from
+# the active azd environment by scripts/create-toolbox.sh (Git Bash) or scripts/create-toolbox.ps1 (PowerShell),
+# which then run `azd ai toolbox create`. The auth block references the project connection by its full ARM id,
+# the shape the toolbox runtime accepts; `type: connection` with a bare name is rejected at call time.
 #
-# To change the tool set, edit this file and run `azd ai toolbox create` again with a new toolbox name, or
-# create a new version in the portal; the azd CLI cannot append an openapi tool to an existing toolbox.
+# Prerequisites in the target project (see docs/deploy-to-another-foundry.md):
+#   - a CustomKeys connection named maps-mock-key with key x-api-key = the mock API's MOCK_API_KEY and target
+#     https://mdlineapps-f0bgc7e5cyasdths.westus3-01.azurewebsites.net. The key lives only there, never in git.
+#   - the Foundry User role on the project for whoever runs the script.
+# The script also sets TOOLBOX_NAME in the azd environment; azure.yaml passes it into the container.
+#
+# Toolbox versions are immutable and the azd CLI cannot append an openapi tool: to change the tool set, edit
+# this file and rerun the script with --replace (bash) or -Replace (PowerShell), which deletes and recreates it.
 description: 'MAPS mock API for Agent Assist, attached by reference: one OpenAPI tool with an API-key connection.'
 tools:
 - type: openapi
@@ -1137,4 +1136,4 @@ tools:
     auth:
       type: project_connection
       security_scheme:
-        project_connection_id: /subscriptions/5aff2f13-a6be-470d-a8eb-c9b402da7cc8/resourceGroups/az-vsi/providers/Microsoft.CognitiveServices/accounts/VSI/projects/VSI-PROJ/connections/maps-mock-key
+        project_connection_id: ${AZURE_AI_PROJECT_ID}/connections/maps-mock-key
